@@ -1,0 +1,32 @@
+tools:
+  ginkgo:
+    go:
+      module: github.com/onsi/ginkgo/v2
+      version: '{{ .Vars.version }}'
+      subPath: ginkgo
+    vars:
+      version: |
+        $(shell $(MAKE_ENV_GO) mod edit -print |  grep 'github.com/onsi/ginkgo/v2' | awk '{ print $$2 }')
+  kubectl:
+    http:
+      url: |
+        {{ .Vars.mirror }}/{{ .Vars.version }}/bin/$(shell go env GOOS)/$(shell go env GOARCH)/kubectl
+    vars:
+      mirror: https://dl.k8s.io/release
+      version: v1.25.11 
+  helm:
+    http:
+      url: 'https://get.helm.sh/helm-{{ .Vars.version }}-{{ .Vars.goOS }}-{{ .Vars.goArch }}.tar.gz'
+      tar:
+        compression: gzip
+        path: '{{ .Vars.goOS }}-{{ .Vars.goArch }}/helm'
+    vars:
+      mirror: https://dl.k8s.io/release
+      version: v3.13.3
+      goOS: $(shell go env GOOS)
+      goArch: $(shell go env GOARCH)
+
+toolSets:
+  test-tools: [ginkgo]
+  k8s-tools: [kubectl, helm]
+
