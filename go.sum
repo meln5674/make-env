@@ -11,8 +11,8 @@ github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38 h1:yAJXTCF9TqKcTiHJAE
 github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38/go.mod h1:kpwsk12EmLew5upagYY7GY0pfYCcupk39gWOCRROcvE=
 github.com/huandu/xstrings v1.4.0 h1:D17IlohoQq4UcpqD7fDk80P7l+lwAmlFaBHgOipl2FU=
 github.com/huandu/xstrings v1.4.0/go.mod h1:y5/lhBue+AyNmUVz9RLU9xbLR0o4KIIExikq4ovT0aE=
-github.com/meln5674/rflag v0.0.0-20231114035053-b81e1b904223 h1:h10H5A5/p8aBZrOnooxXWmeCB5vezu3ed8vRMqBjUmo=
-github.com/meln5674/rflag v0.0.0-20231114035053-b81e1b904223/go.mod h1:eI0y3kAsKacoEtFPbprDA/I4udmzmjXoPfyH5UYLum8=
+github.com/meln5674/rflag v0.0.0-20231217180901-e4edacde2851 h1:e8RlraZeIs8dTqwr92WHR5INGTC9PDKH1Q8BLYSVc0M=
+github.com/meln5674/rflag v0.0.0-20231217180901-e4edacde2851/go.mod h1:eI0y3kAsKacoEtFPbprDA/I4udmzmjXoPfyH5UYLum8=
 github.com/onsi/ginkgo/v2 v2.13.1 h1:LNGfMbR2OVGBfXjvRZIZ2YCTQdGKtPLvuI1rMCCj3OU=
 github.com/onsi/ginkgo/v2 v2.13.1/go.mod h1:XStQ8QcGwLyF4HdfcZB8SFOS/MWCgDuXMSBe6zrvLgM=
 github.com/onsi/gomega v1.30.0 h1:hvMK7xYz4D3HapigLTeGdId/NcfQx1VHMJc60ew99+8=
