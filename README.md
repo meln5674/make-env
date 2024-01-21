@@ -14,6 +14,8 @@ to execute them as part of an existing build process, as well as a Dockerfile wh
 ## Configuration Format
 
 ```yaml
+vars:
+  <global_name>: <value>
 tools:
   <tool_name>:
     <install_type>:
@@ -26,7 +28,8 @@ tools:
     ...
 sets:
   <set_name>:
-  - <tool>
+  - <tool_name>
+  - <other_dependency>
   ...
 output_name: <output_makefile_filename>
 ```
@@ -65,7 +68,7 @@ Provided tools are not installed, but instead, expected to be provided by the us
 used in targets so that instances of this tool can be globally overridden, and targets can explicitly declare a dependency on that tool. The target
 generated for such a tool simply confirms it exists, and if the value is a relative path, ensures it is on the $PATH.
 
-This is intended to provide the same experience as many older hand-written Makefiles which provide a $(CC) variable to configure the C compiled used.
+This is intended to provide the same experience as many older hand-written Makefiles which provide a $(CC) variable to configure the C compiler used.
 
 ```yaml
 example:

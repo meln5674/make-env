@@ -31,6 +31,7 @@ func mkDefaultTemplate() *template.Template {
 			"toVarRef":     toVarRef,
 			"toVarDict":    toVarDict,
 			"ntindent":     ntindent,
+			"hasTool":      hasTool,
 			"tpl":          tpl,
 			"include":      templateWithInclude{Template: t}.include,
 		}).
@@ -42,6 +43,7 @@ func mkDefaultTemplate() *template.Template {
 var defaultTemplate = mkDefaultTemplate()
 
 type Config struct {
+	Vars        map[string]string     `json:"vars,omitempty" yaml:"vars,omitempty"`
 	LocalBinVar string                `json:"localBinVar,omitempty" yaml:"localBinVar,omitempty"`
 	Tools       map[string]ToolConfig `json:"tools,omitempty" yaml:"tools,omitempty"`
 	ToolSets    map[string]ToolSet    `json:"toolSets,omitempty" yaml:"toolSets,omitempty"`
@@ -77,12 +79,12 @@ type HTTPToolConfig struct {
 }
 
 type ZipConfig struct {
-	Path string `json:"path,omitempty", yaml:"path,omitempty"`
+	Path string `json:"path,omitempty" yaml:"path,omitempty"`
 }
 
 type TarConfig struct {
 	Compression string `json:"compression,omitempty" yaml:"compression,omitempty"`
-	Path        string `json:"path,omitempty", yaml:"path,omitempty"`
+	Path        string `json:"path,omitempty" yaml:"path,omitempty"`
 }
 
 type GoToolConfig struct {
@@ -178,6 +180,11 @@ func ntindent(n int, s string) (string, error) {
 	// log.Print("Error: ", scanner.Err())
 	// log.Print("Out: ", builder.String())
 	return builder.String(), scanner.Err()
+}
+
+func hasTool(tools map[string]ToolConfig, name string) bool {
+	_, ok := tools[name]
+	return ok
 }
 
 func tpl(s string, data interface{}) (string, error) {

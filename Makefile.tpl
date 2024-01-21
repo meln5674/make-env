@@ -1,3 +1,22 @@
+{{/*
+To generate the Makefile:
+
+1. Create a variable for each global var
+2. Create a provided-type tool for each of the built-in necessary tools (curl, go, etc)
+3. For each tool:
+    1. Create a variable prefixed with the tool name for each tool-specific var
+    2. For HTTP tools, create a variable for the url. If the tool is within a zip, create a variable for the download location.
+    3. Create a variable for the tool which points to its name in the local bin directory
+    4. Create a target with that variable's value as the name, which performs the download into a hidden directory in a way that is unique for the given configuration,
+        e.g. the http url, or the go module/path/version, so that changing this results in a new download, and then create a symlink to it in the local
+        bin directory, ensuring to re-create it so that updates point to the new tool.
+    5. Create a phony target that is the same as the tools name which does nothing but depends on the target named by the variable in step 3
+4. For each tool set, create a phony target that does nothing
+    1. For each item in the toolset that is a tool name, add a dependency that is the value of the variable for that tool from step 3.3
+    2. For each item in the toolset that is not a tool name, add a dependency on that verbatim name
+5. Add a target for the generate Makefile that uses the input and output files supplied on the command line
+*/}}
+
 {{- define "make-env.path-to-command" -}}
 $(shell command -v {{ . }})
 {{- end -}}
@@ -105,6 +124,10 @@ $(MAKE_ENV_LN) -s {{ $downloadPath }} {{ $dot.toolVarRef }}
 {{- end -}}
 
 {{- $config := .Config }}
+{{- $globalVarDict := $config.Vars | toVarDict "" }}
+{{- range $k, $v := $config.Vars }}
+{{ $k | toVarName }} ?= {{ $v }}
+{{- end }}
 {{- range $builtin, $default := dict "go" $config.Commands.Go "curl" $config.Commands.Curl "tar" $config.Commands.Tar "unzip" $config.Commands.Unzip "base64" $config.Commands.Base64 "mkdir" $config.Commands.Mkdir "chmod" $config.Commands.Chmod "rm" $config.Commands.Rm "ln" $config.Commands.Ln "touch" $config.Commands.Touch }}
 {{- $toolVarName := print "MAKE_ENV_" ($builtin | toVarName) }}
 {{- $toolVarRef := $toolVarName | toVarRef }}
@@ -124,7 +147,14 @@ $(MAKE_ENV_LN) -s {{ $downloadPath }} {{ $dot.toolVarRef }}
 
 {{ "" }}
 
-{{- $varDict := $toolCfg.Vars | toVarDict $toolName }}
+{{- $localVarDict := $toolCfg.Vars | toVarDict $toolName }}
+{{- $varDict := dict }}
+{{- range $k, $v := $globalVarDict }}
+{{- $varDict = set $varDict $k $v }}
+{{- end }}
+{{- range $k, $v := $localVarDict }}
+{{- $varDict = set $varDict $k $v }}
+{{- end }}
 {{- $tplDot := dict "Config" $config "Vars" $varDict }}
 {{- $toolVarName := $toolName | toVarName }}
 {{- $toolVarRef := $toolVarName | toVarRef }}
@@ -157,9 +187,9 @@ $(MAKE_ENV_LN) -s {{ $downloadPath }} {{ $dot.toolVarRef }}
 {{ $toolName }}: {{ $toolVarRef }}
 {{ end }}{{/* range $toolName, $toolCfg */}}
 
-{{- range $setName, $toolNames := $config.ToolSets }}
+{{- range $setName, $names := $config.ToolSets }}
 .PHONY: {{ $setName }}
-{{ $setName }}:{{ range $toolName := $toolNames }} {{ $toolName | toVarName | toVarRef }}{{ end }}
+{{ $setName }}:{{ range $name := $names }} {{ if hasTool $config.Tools $name }}{{ $name | toVarName | toVarRef }}{{ else }}{{ $name }}{{ end }}{{ end }}
 {{ end }}{{/* range $setName, $toolNames */}}
 {{ .OutPath }}: {{ .InPath }}
 	make-env --config '{{ .InPath }}' --out '{{ .OutPath }}'
