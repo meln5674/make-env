@@ -4,16 +4,16 @@ To generate the Makefile:
 1. Create a variable for each global var
 2. Create a provided-type tool for each of the built-in necessary tools (curl, go, etc)
 3. For each tool:
-    1. Create a variable prefixed with the tool name for each tool-specific var
-    2. For HTTP tools, create a variable for the url. If the tool is within a zip, create a variable for the download location.
-    3. Create a variable for the tool which points to its name in the local bin directory
-    4. Create a target with that variable's value as the name, which performs the download into a hidden directory in a way that is unique for the given configuration,
-        e.g. the http url, or the go module/path/version, so that changing this results in a new download, and then create a symlink to it in the local
-        bin directory, ensuring to re-create it so that updates point to the new tool.
-    5. Create a phony target that is the same as the tools name which does nothing but depends on the target named by the variable in step 3
+	1. Create a variable prefixed with the tool name for each tool-specific var
+	2. For HTTP tools, create a variable for the url. If the tool is within a zip, create a variable for the download location.
+	3. Create a variable for the tool which points to its name in the local bin directory
+	4. Create a target with that variable's value as the name, which performs the download into a hidden directory in a way that is unique for the given configuration,
+		e.g. the http url, or the go module/path/version, so that changing this results in a new download, and then create a symlink to it in the local
+		bin directory, ensuring to re-create it so that updates point to the new tool.
+	5. Create a phony target that is the same as the tools name which does nothing but depends on the target named by the variable in step 3
 4. For each tool set, create a phony target that does nothing
-    1. For each item in the toolset that is a tool name, add a dependency that is the value of the variable for that tool from step 3.3
-    2. For each item in the toolset that is not a tool name, add a dependency on that verbatim name
+	1. For each item in the toolset that is a tool name, add a dependency that is the value of the variable for that tool from step 3.3
+	2. For each item in the toolset that is not a tool name, add a dependency on that verbatim name
 5. Add a target for the generate Makefile that uses the input and output files supplied on the command line
 */}}
 
@@ -24,7 +24,12 @@ $(shell command -v {{ . }})
 {{- define "make-env.provided-tool" -}}
 {{ .toolVarName }} ?= {{ include "make-env.path-to-command" .toolCfg.Provided.Default }}
 {{ .toolVarRef }}: {{ .toolCfg.DependsOn | join " " }}
+ifeq ({{ .toolVarRef }},)
+	echo "{{ .toolVarName }} does not exist/is not on the path"
+	exit 1
+else
 	stat {{ .toolVarRef }} >/dev/null
+endif
 {{- end -}}
 
 {{- define "make-env.http-tool-tar-flags" -}}
