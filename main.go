@@ -18,8 +18,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-//go:embed Makefile.tpl
-var defaultTemplateString string
+var (
+	//go:embed Makefile.tpl
+	defaultTemplateString string
+	//go:embed Dockerfile.tpl
+	defaultDockerfileTemplateString string
+)
 
 func mkDefaultTemplate() *template.Template {
 	t := template.New("Makefile.tpl")
@@ -29,7 +33,9 @@ func mkDefaultTemplate() *template.Template {
 			"toURLVarName": toURLVarName,
 			"toZipVarName": toZipVarName,
 			"toVarRef":     toVarRef,
+			"toArgRef":     toArgRef,
 			"toVarDict":    toVarDict,
+			"toArgDict":    toArgDict,
 			"ntindent":     ntindent,
 			"hasTool":      hasTool,
 			"tpl":          tpl,
@@ -40,7 +46,31 @@ func mkDefaultTemplate() *template.Template {
 	)
 }
 
-var defaultTemplate = mkDefaultTemplate()
+func mkDefaultDockerfileTemplate() *template.Template {
+	t := template.New("Dockerfile.tpl")
+	return template.Must(t.
+		Funcs(map[string]interface{}{
+			"toVarName":    toVarName,
+			"toURLVarName": toURLVarName,
+			"toZipVarName": toZipVarName,
+			"toVarRef":     toVarRef,
+			"toArgRef":     toArgRef,
+			"toVarDict":    toVarDict,
+			"toArgDict":    toArgDict,
+			"ntindent":     ntindent,
+			"hasTool":      hasTool,
+			"tpl":          tpl,
+			"include":      templateWithInclude{Template: t}.include,
+		}).
+		Funcs(sprig.TxtFuncMap()).
+		Parse(defaultDockerfileTemplateString),
+	)
+}
+
+var (
+	defaultTemplate           = mkDefaultTemplate()
+	defaultDockerfileTemplate = mkDefaultDockerfileTemplate()
+)
 
 type Config struct {
 	Vars        map[string]string     `json:"vars,omitempty" yaml:"vars,omitempty"`
@@ -48,12 +78,14 @@ type Config struct {
 	Tools       map[string]ToolConfig `json:"tools,omitempty" yaml:"tools,omitempty"`
 	ToolSets    map[string]ToolSet    `json:"toolSets,omitempty" yaml:"toolSets,omitempty"`
 	Commands    CommandsConfig        `json:"commands,omitempty" yaml:"commands,omitempty"`
+	Dockerfile  DockerfileConfig      `json:"dockerfile,omitempty" yaml:"dockerfile,omitempty"`
 }
 
 func (Config) Defaults() Config {
 	return Config{
 		LocalBinVar: "LOCALBIN",
 		Commands:    CommandsConfig{}.Defaults(),
+		Dockerfile:  DockerfileConfig{}.Defaults(),
 	}
 }
 
@@ -117,6 +149,7 @@ type CommandsConfig struct {
 	Rm     string
 	Ln     string
 	Touch  string
+	Mv     string
 }
 
 func (CommandsConfig) Defaults() CommandsConfig {
@@ -131,6 +164,29 @@ func (CommandsConfig) Defaults() CommandsConfig {
 		Rm:     "rm",
 		Ln:     "ln",
 		Touch:  "touch",
+		Mv:     "mv",
+	}
+}
+
+type DockerfileConfig struct {
+	Args        map[string]string `json:"args,omitempty" yaml:"args,omitempty"`
+	GoImage     string            `json:"goImage,omitempty" yaml:"goImage,omitempty"`
+	CurlImage   string            `json:"curlImage,omitempty" yaml:"curlImage,omitempty"`
+	StagePrefix string            `json:"stagePrefix,omitempty" yaml:"stagePrefix,omitempty"`
+	FinalStage  string            `json:"finalStage,omitempty" yaml:"finalStage,omitempty"`
+	From        string            `json:"from,omitempty" yaml:"from,omitempty"`
+	PreCopy     string            `json:"preCopy,omitempty" yaml:"preCopy,omitempty"`
+	PostCopy    string            `json:"postCopy,omitempty" yaml:"postCopy,omitempty"`
+	FinalBin    string            `json:"finalBin,omitempty" yaml:"finalBin,omitempty"`
+}
+
+func (DockerfileConfig) Defaults() DockerfileConfig {
+	return DockerfileConfig{
+		StagePrefix: "make-env",
+		From:        "scratch",
+		GoImage:     "docker.io/library/golang:latest",
+		CurlImage:   "docker.io/alpine/curl:latest",
+		FinalBin:    "/usr/bin",
 	}
 }
 
@@ -140,6 +196,10 @@ func toVarName(toolName string) string {
 
 func toVarRef(varName string) string {
 	return fmt.Sprintf("$(%s)", varName)
+}
+
+func toArgRef(varName string) string {
+	return fmt.Sprintf("${%s}", varName)
 }
 
 func toURLVarName(toolName string) string {
@@ -152,10 +212,30 @@ func toZipVarName(toolName string) string {
 
 func toVarDict(toolName string, vars map[string]string) map[string]string {
 	varDict := make(map[string]string, len(vars))
+	toolVarName := toVarName(toolName)
 	for k := range vars {
-		varDict[k] = toVarRef(fmt.Sprintf("%s_%s", toVarName(toolName), toVarName(k)))
+		varName := toVarName(k)
+		if toolName == "" {
+			varDict[k] = toVarRef(varName)
+		} else {
+			varDict[k] = toVarRef(fmt.Sprintf("%s_%s", toolVarName, varName))
+		}
 	}
 	return varDict
+}
+
+func toArgDict(toolName string, args map[string]string) map[string]string {
+	argDict := make(map[string]string, len(args))
+	toolArgName := toVarName(toolName)
+	for k := range args {
+		argName := toVarName(k)
+		if toolName == "" {
+			argDict[k] = toArgRef(argName)
+		} else {
+			argDict[k] = toArgRef(fmt.Sprintf("%s_%s", toolArgName, argName))
+		}
+	}
+	return argDict
 }
 
 func ntindent(n int, s string) (string, error) {
@@ -222,16 +302,18 @@ func (t templateWithInclude) include(name string, data interface{}) (string, err
 }
 
 type argsT struct {
-	Config    string `rflag:"usage=Configuration file to generate from"`
-	Out       string `rflag:"usage=Output Makefile to generate"`
-	Directory string `rflag:"usage=Directory to change to before running,shorthand=C"`
-	Debug     bool   `rflag:"usage=Log debugging information"`
+	Config        string `rflag:"usage=Configuration file to generate from"`
+	Out           string `rflag:"usage=Output Makefile to generate"`
+	OutDockerfile string `rflag:"usage=Output Dockerfile to generate"`
+	Directory     string `rflag:"usage=Directory to change to before running,shorthand=C"`
+	Debug         bool   `rflag:"usage=Log debugging information"`
 }
 
 func (argsT) Defaults() argsT {
 	return argsT{
-		Config: "make-env.yaml",
-		Out:    "make-env.Makefile",
+		Config:        "make-env.yaml",
+		Out:           "make-env.Makefile",
+		OutDockerfile: "make-env.Dockerfile",
 	}
 }
 
@@ -264,20 +346,43 @@ func mainInner() error {
 	if args.Debug {
 		log.Printf("Parsed config %#v", config)
 	}
-	out, err := os.Create(args.Out)
-	if err != nil {
-		return errors.Wrapf(err, "Failed to open output Makefile %s", args.Out)
-	}
-	defer out.Close()
+	if args.Out == "" {
+		log.Printf("Makefile generation disabled")
+	} else {
+		out, err := os.Create(args.Out)
+		if err != nil {
+			return errors.Wrapf(err, "Failed to open output Makefile %s", args.Out)
+		}
+		defer out.Close()
 
-	err = defaultTemplate.Execute(out, map[string]interface{}{
-		"Config":  config,
-		"InPath":  args.Config,
-		"OutPath": args.Out,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "Failed to generate output Makefile %s", args.Out)
+		err = defaultTemplate.Execute(out, map[string]interface{}{
+			"Config":  config,
+			"InPath":  args.Config,
+			"OutPath": args.Out,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "Failed to generate output Makefile %s", args.Out)
+		}
 	}
+	if args.OutDockerfile == "" {
+		log.Printf("Dockerfile generation disabled")
+	} else {
+		out, err := os.Create(args.OutDockerfile)
+		if err != nil {
+			return errors.Wrapf(err, "Failed to open output Makefile %s", args.Out)
+		}
+		defer out.Close()
+
+		err = defaultDockerfileTemplate.Execute(out, map[string]interface{}{
+			"Config":  config,
+			"InPath":  args.Config,
+			"OutPath": args.OutDockerfile,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "Failed to generate output Dockerfile %s", args.OutDockerfile)
+		}
+	}
+
 	return nil
 }
 

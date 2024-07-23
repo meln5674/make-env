@@ -1,5 +1,6 @@
 *.swp
 bin/
 make-env.Makefile
+make-env.Dockerfile
 make-env
 main

@@ -1,0 +1,52 @@
+tools:
+  test-http-raw:
+    http:
+      url: http://example.com/test-{{ .Vars.version }}
+    vars:
+      version: 1.2.3
+  test-http-tar:
+    http:
+      url: http://example.com/test-{{ .Vars.version }}
+      tar: {}
+    vars:
+      version: 1.2.3
+  test-http-tar-subpath:
+    http:
+      url: http://example.com/test-{{ .Vars.version }}
+      tar:
+        subpath: test-subpath
+    vars:
+      version: 1.2.3
+  test-http-tar-gz:
+    http:
+      url: http://example.com/test-{{ .Vars.version }}
+      tar:
+        compression: gzip
+    vars:
+      version: 1.2.3
+  test-http-tar-bzip2:
+    http:
+      url: http://example.com/test-{{ .Vars.version }}
+      tar:
+        compression: bzip2
+    vars:
+      version: 1.2.3
+  test-http-tar-lzma:
+    http:
+      url: http://example.com/test-{{ .Vars.version }}
+      tar:
+        compression: lzma
+    vars:
+      version: 1.2.3
+  test-go:
+    go:
+      module: example.com/test
+      version: '{{ .Vars.version }}'
+    vars:
+      version: v1.2.3
+    
+
+
+
+dockerfile:
+  makeEnvImage: make-env:testing
