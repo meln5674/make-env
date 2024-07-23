@@ -33,7 +33,11 @@ endif
 {{- end -}}
 
 {{- define "make-env.http-tool-tar-flags" -}}
--x {{ if eq .Tar.Compression "gzip" }}-z {{ else if eq .Tar.Compression "bzip" }}-j {{ end }}
+-x
+{{- if eq .Tar.Compression "gzip" }} -z
+{{- else if eq .Tar.Compression "bzip2" }} -j
+{{- else if eq .Tar.Compression "lzma" }} -J 
+{{- end -}}
 {{- end -}}
 
 {{- define "make-env.to-base64" -}}
